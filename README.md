@@ -1,5 +1,5 @@
 # E-store-Backend-API
-The Backend REST API use for E-store write by Node.JS + MySQL + Stripe Payment API
+The Backend REST API with Authorization use for E-store write by Node.JS + MySQL + Stripe Payment API.
 
 ## Programming Language & Framework
 
@@ -22,6 +22,10 @@ node index.js
 cd backend/payment
 node server.js
 ```
+
+## Authorization
+
+- JWT [Use in user Login & Signout]
 
 ## Structure
 
