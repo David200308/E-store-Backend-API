@@ -8,49 +8,71 @@ function hash(string) {
 }
 
 exports.userLogin = async (req, res, next) => {
-    const password = req.body['password'];
+    const token = req.body.token || req.headers["x-access-token"];
     const userName = req.body['userName'];
 
-    if (hash(password) == "null") {
-        res.status(401).json({
-            status: "failed",
-            message: "Invalid Password"
-        });
-    }
+    if (!token) {
+        const password = req.body['password'];
 
-    var sql = "SELECT * FROM USERINFO WHERE userName = ? AND userPassword = ? AND userStatus = 0";
-    db.query(sql, [userName, hash(password)], async function (err, result) {
-        if (err) throw err;
-        if (result.length == 0) {
+        if (hash(password) == "null") {
             res.status(401).json({
                 status: "failed",
                 message: "Invalid Password"
             });
-        } else {
-            var rack = hat.rack();
-            const tempToken = rack();
+        }
 
-            const token = jwt.sign(
-                { userName, password },
-                tempToken,
-                {
-                  expiresIn: "2h",
-                }
-            );
+        var sql = "SELECT * FROM USERINFO WHERE userName = ? AND userPassword = ? AND userStatus = 0";
+        db.query(sql, [userName, hash(password)], async function (err, result) {
+            if (err) throw err;
+            if (result.length == 0) {
+                res.status(401).json({
+                    status: "failed",
+                    message: "Invalid Password"
+                });
+            } else {
+                var rack = hat.rack();
+                const tempToken = rack();
 
-            var updateStatusSQL = "UPDATE USERINFO SET userStatus = 1, tempToken = ? WHERE userName = ? AND userStatus = 0";
-            db.query(updateStatusSQL, [hash(token), userName], function (err, result) {
-                if (err) throw err;
-                console.log("userStatus updated to true");
-            });
+                const authToken = jwt.sign(
+                    { userName, password },
+                    tempToken,
+                    {
+                        expiresIn: "7200000",
+                    }
+                );
+
+                var updateStatusSQL = "UPDATE USERINFO SET userStatus = 1, tempToken = ? WHERE userName = ? AND userStatus = 0";
+                db.query(updateStatusSQL, [tempToken, userName], function (err, result) {
+                    if (err) throw err;
+                    console.log("userStatus updated to true");
+                });
+
+                res.status(200).json({
+                    status: true,
+                    tempToken: authToken,
+                    maxAge: 7200000
+                });
+            }
+        });
+    }
+    try {
+        var sql = "SELECT tempToken FROM USERINFO WHERE userName = ? AND userStatus = 1";
+        db.query(updateStatusSQL, [tempToken, userName], function (err, result) {
+            if (err) throw err;
+            tempToken = result[0]['tempToken'];
+            const decoded = jwt.verify(token, tempToken);
 
             res.status(200).json({
                 status: true,
-                tempToken: token,
-                maxAge: 7200000
+                message: "Valid Token"
             });
-        }
-    });
+        });
+    } catch (err) {
+        return res.status(401).json({
+            status: false,
+            message: "Invalid Token"
+        });
+    }
 };
 
 exports.userLogout = async (req, res, next) => {
