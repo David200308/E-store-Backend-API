@@ -6,9 +6,9 @@ const productControllers = require("../controllers/product");
 const router = express.Router();
 
 // Router for get & insert information from the user
-router.route("/login/:userName").get(loginControllers.userLogin);
-router.route("/logout/:userName").get(loginControllers.userLogout);
-router.route("/signup/:userName").get(loginControllers.userSignup);
+router.route("/login").get(loginControllers.userLogin);
+router.route("/logout").get(loginControllers.userLogout);
+router.route("/signup").get(loginControllers.userSignup);
 
 // Router for get & insert information for cart and payment
 router.route("/paying/:orderID").get(paymentControllers.paying);

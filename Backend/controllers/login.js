@@ -1,14 +1,15 @@
 const db = require("../database");
 const hat = require("hat");
 const { createHash } = require('crypto');
+const jwt = require('jsonwebtoken');
 
 function hash(string) {
     return createHash('sha256').update(string).digest('hex');
 }
 
 exports.userLogin = async (req, res, next) => {
-    const password = req.headers['password'];
-    const userName = req.params.userName;
+    const password = req.body['password'];
+    const userName = req.body['userName'];
 
     if (hash(password) == "null") {
         res.status(401).json({
@@ -29,23 +30,32 @@ exports.userLogin = async (req, res, next) => {
             var rack = hat.rack();
             const tempToken = rack();
 
+            const token = jwt.sign(
+                { userName, password },
+                tempToken,
+                {
+                  expiresIn: "2h",
+                }
+            );
+
             var updateStatusSQL = "UPDATE USERINFO SET userStatus = 1, tempToken = ? WHERE userName = ? AND userStatus = 0";
-            db.query(updateStatusSQL, [hash(tempToken), userName], function (err, result) {
+            db.query(updateStatusSQL, [hash(token), userName], function (err, result) {
                 if (err) throw err;
                 console.log("userStatus updated to true");
             });
 
             res.status(200).json({
                 status: true,
-                tempToken: tempToken
+                tempToken: token,
+                maxAge: 7200000
             });
         }
     });
 };
 
 exports.userLogout = async (req, res, next) => {
-    const tempToken = req.headers['data'];
-    const userName = req.params.userName;
+    const tempToken = req.body.token || req.headers["x-access-token"];
+    const userName = req.body["userName"];
 
     var sql = "SELECT * FROM USERINFO WHERE userName = ? AND userStatus = 1 AND tempToken = ?";
     db.query(sql, [userName, hash(tempToken)], async function (err, result) {
@@ -71,8 +81,8 @@ exports.userLogout = async (req, res, next) => {
 };
 
 exports.userSignup = async (req, res, next) => {
-    const password = hash(req.headers['password']);
-    const userName = req.params.userName;
+    const password = hash(req.body['password']);
+    const userName = req.body["userName"];
 
     var getId = "SELECT COUNT(*) AS COUNT FROM USERINFO";
     db.query(getId, function (err, result) {
